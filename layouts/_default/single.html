@@ -5,6 +5,7 @@
       <p class="series-label">
         连载：
         {{ range . }}<a href="{{ .RelPermalink }}">{{ .LinkTitle }}</a>{{ end }}
+        {{ with $.Params.volume }} · {{ . }}{{ end }}
         {{ with $.Params.chapter }} · {{ . }}{{ end }}
       </p>
     {{ end }}

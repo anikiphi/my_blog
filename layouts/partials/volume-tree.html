@@ -1,0 +1,22 @@
+{{ $volumes := slice }}
+{{ range .GroupByParam "volume" }}
+  {{ $volumeWeight := 1 }}
+  {{ with index . 0 }}{{ $volumeWeight = .Params.volume_weight }}{{ end }}
+  {{ $volumes = $volumes | append (dict "name" .Key "weight" $volumeWeight "pages" .Pages.ByWeight) }}
+{{ end }}
+
+{{ range sort $volumes "weight" "asc" }}
+  <details class="volume-tree-item" open>
+    <summary>
+      <span class="tree-title">{{ .name }}</span>
+      <span class="tree-count">{{ len .pages }} 章</span>
+    </summary>
+    <ol class="chapter-list tree-chapter-list">
+      {{ range .pages }}
+        <li>
+          <a href="{{ .RelPermalink }}">{{ with .Params.chapter }}{{ . }}{{ else }}{{ .Title }}{{ end }}</a>
+        </li>
+      {{ end }}
+    </ol>
+  </details>
+{{ end }}

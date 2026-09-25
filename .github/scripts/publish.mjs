@@ -11,7 +11,7 @@ const eventPath = process.env.GITHUB_EVENT_PATH;
 const repository = process.env.GITHUB_REPOSITORY || "";
 const token = process.env.GITHUB_TOKEN || "";
 const branch = process.env.DEFAULT_BRANCH || "main";
-const chapterHeadingPattern = /^(?:第\s*[0-9零〇一二三四五六七八九十百千万两]+\s*[章节回话卷篇部集幕]|序章|序言|楔子|引子|前言|后记|终章|尾声|番外(?:\s*[0-9零〇一二三四五六七八九十百千万两]+)?|Chapter\s+(?:\d+|[IVXLCDM]+)|Prologue|Epilogue)(?:\s*[:：、.\-—]?\s*.*)?$/iu;
+const chapterHeadingPattern = /^(?:第\s*[0-9零〇一二三四五六七八九十百千万两]+\s*[章节回话卷篇部集幕](?:\s*[:：、.\-—]\s*.*|\s+.+)?|序章(?:\s*[:：、.\-—]\s*.*|\s+.+)?|序言(?:\s*[:：、.\-—]\s*.*|\s+.+)?|楔子(?:\s*[:：、.\-—]\s*.*|\s+.+)?|引子(?:\s*[:：、.\-—]\s*.*|\s+.+)?|前言(?:\s*[:：、.\-—]\s*.*|\s+.+)?|后记(?:\s*[:：、.\-—]\s*.*|\s+.+)?|终章(?:\s*[:：、.\-—]\s*.*|\s+.+)?|尾声(?:\s*[:：、.\-—]\s*.*|\s+.+)?|番外(?:\s*[0-9零〇一二三四五六七八九十百千万两]+)?(?:\s*[:：、.\-—]\s*.*|\s+.+)?|Chapter\s+(?:\d+|[IVXLCDM]+)(?:\s*[:：、.\-—]\s*.*|\s+.+)?|Prologue(?:\s*[:：、.\-—]\s*.*|\s+.+)?|Epilogue(?:\s*[:：、.\-—]\s*.*|\s+.+)?)$/iu;
 
 function runGit(args, options = {}) {
   return execFileSync("git", args, {
@@ -100,6 +100,61 @@ function splitChapters(value) {
   return chapters.length > 1 ? chapters : null;
 }
 
+function parseChineseNumber(value) {
+  const text = String(value || "").trim();
+  if (/^\d+$/.test(text)) return Number(text);
+
+  const digits = { 零: 0, 〇: 0, 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
+  const units = { 十: 10, 百: 100, 千: 1000, 万: 10000 };
+  let total = 0;
+  let current = 0;
+
+  for (const character of text) {
+    if (character in digits) {
+      current = digits[character];
+      continue;
+    }
+    if (character in units) {
+      const unit = units[character];
+      if (unit === 10000) {
+        total = (total + current) * unit;
+        current = 0;
+      } else {
+        total += (current || 1) * unit;
+        current = 0;
+      }
+    }
+  }
+
+  const result = total + current;
+  return Number.isFinite(result) && result > 0 ? result : 1;
+}
+
+function parseBookVolume(rawTitle) {
+  const title = String(rawTitle || "").trim();
+  const volumePattern = /第\s*([0-9零〇一二三四五六七八九十百千万两]+)\s*卷(?:\s*[-—_:：]?\s*([^-—_:：]+))?/u;
+  const match = title.match(volumePattern);
+
+  if (!match) {
+    return { bookTitle: title, volumeTitle: "正文", volumeWeight: 1 };
+  }
+
+  const volumeTitle = match[0]
+    .replace(/\s*[-—_:：]\s*/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const bookTitle = title
+    .replace(match[0], "")
+    .replace(/^[\s\-—_:：]+|[\s\-—_:：]+$/g, "")
+    .trim() || title;
+
+  return {
+    bookTitle,
+    volumeTitle,
+    volumeWeight: parseChineseNumber(match[1]),
+  };
+}
+
 function yamlString(value) {
   return JSON.stringify(String(value || ""));
 }
@@ -112,7 +167,10 @@ function createPost({
   content,
   slug,
   series = "",
+  volume = "",
+  volumeWeight,
   chapter = "",
+  chapterWeight,
   weight,
 }) {
   const lines = [
@@ -124,7 +182,10 @@ function createPost({
   ];
 
   if (series) lines.push(`series: ${yamlString(series)}`);
+  if (volume) lines.push(`volume: ${yamlString(volume)}`);
+  if (Number.isFinite(volumeWeight)) lines.push(`volume_weight: ${volumeWeight}`);
   if (chapter) lines.push(`chapter: ${yamlString(chapter)}`);
+  if (Number.isFinite(chapterWeight)) lines.push(`chapter_weight: ${chapterWeight}`);
   if (Number.isFinite(weight)) lines.push(`weight: ${weight}`);
   if (summary) lines.push(`summary: ${yamlString(summary)}`);
   lines.push("---", "", content.trim(), "");
@@ -181,10 +242,19 @@ function decodeText(buffer) {
   }
 }
 
-async function writeSeriesPosts({ seriesTitle, chapters, dateBaseMs, slugPrefix }) {
+async function writeSeriesPosts({
+  seriesTitle,
+  volumeTitle = "正文",
+  volumeWeight = 1,
+  chapters,
+  dateBaseMs,
+  slugPrefix,
+}) {
   await fsp.mkdir(postsDir, { recursive: true });
   const converted = [];
-  const seriesSlug = slugPrefix || slugify(seriesTitle);
+  const bookSlug = slugPrefix || slugify(seriesTitle);
+  const volumeSlug = slugify(volumeTitle);
+  const includeVolumeInTitle = volumeTitle && volumeTitle !== "正文";
 
   for (let index = 0; index < chapters.length; index += 1) {
     const item = chapters[index];
@@ -192,11 +262,15 @@ async function writeSeriesPosts({ seriesTitle, chapters, dateBaseMs, slugPrefix 
     if (!content) continue;
 
     const chapterNumber = index + 1;
-    const slug = `${seriesSlug}-${String(chapterNumber).padStart(3, "0")}`;
+    const slug = `${bookSlug}-${volumeSlug}-${String(chapterNumber).padStart(3, "0")}`;
     const fileName = `${slug}.md`;
     const { dateTime } = chinaDateTime(new Date(dateBaseMs + index * 1000).toISOString());
-    const title = `${seriesTitle} · ${item.title}`;
-    const summary = `《${seriesTitle}》连载：${item.title}`;
+    const title = includeVolumeInTitle
+      ? `${seriesTitle} · ${volumeTitle} · ${item.title}`
+      : `${seriesTitle} · ${item.title}`;
+    const summary = includeVolumeInTitle
+      ? `《${seriesTitle}》${volumeTitle}：${item.title}`
+      : `《${seriesTitle}》连载：${item.title}`;
 
     await fsp.writeFile(
       path.join(postsDir, fileName),
@@ -208,8 +282,11 @@ async function writeSeriesPosts({ seriesTitle, chapters, dateBaseMs, slugPrefix 
         content,
         slug,
         series: seriesTitle,
+        volume: volumeTitle,
+        volumeWeight,
         chapter: item.title,
-        weight: chapterNumber,
+        chapterWeight: chapterNumber,
+        weight: volumeWeight * 1000 + chapterNumber,
       }),
       "utf8",
     );
@@ -219,7 +296,6 @@ async function writeSeriesPosts({ seriesTitle, chapters, dateBaseMs, slugPrefix 
 
   return converted;
 }
-
 async function convertIssue(event) {
   const issue = event.issue;
   const body = issue.body || "";
@@ -233,11 +309,14 @@ async function convertIssue(event) {
 
   const chapters = splitChapters(content);
   if (chapters) {
+    const { bookTitle, volumeTitle, volumeWeight } = parseBookVolume(title);
     return writeSeriesPosts({
-      seriesTitle: title,
+      seriesTitle: bookTitle,
+      volumeTitle,
+      volumeWeight,
       chapters,
       dateBaseMs: new Date(issue.created_at).getTime(),
-      slugPrefix: `post-${issue.number}-chapters`,
+      slugPrefix: `post-${issue.number}-${slugify(volumeTitle)}`,
     });
   }
 
@@ -282,11 +361,13 @@ async function convertInbox() {
 
     const chapters = splitChapters(content);
     if (chapters) {
+      const { bookTitle, volumeTitle, volumeWeight } = parseBookVolume(title);
       const created = await writeSeriesPosts({
-        seriesTitle: title,
+        seriesTitle: bookTitle,
+        volumeTitle,
+        volumeWeight,
         chapters,
         dateBaseMs: Date.now(),
-        slugPrefix: slugify(title),
       });
       converted.push(...created);
       await fsp.unlink(sourcePath);

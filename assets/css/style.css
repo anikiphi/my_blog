@@ -91,3 +91,25 @@ a:hover { color: var(--accent); }
 .series-card { display: flex; justify-content: space-between; align-items: baseline; gap: 18px; padding: 22px 24px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; text-decoration: none; }
 .series-card strong { font-size: 22px; }
 .series-card span { color: var(--muted); font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px; white-space: nowrap; }
+.book-tree { padding: 28px 0 72px; }
+.book-tree-item, .volume-tree-item { background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+.book-tree-item { margin-bottom: 18px; overflow: hidden; }
+.book-tree-item > summary, .volume-tree-item > summary { display: flex; justify-content: space-between; align-items: center; gap: 18px; cursor: pointer; list-style: none; }
+.book-tree-item > summary::-webkit-details-marker, .volume-tree-item > summary::-webkit-details-marker { display: none; }
+.book-tree-item > summary { padding: 22px 24px; font-size: 22px; font-weight: 800; }
+.book-tree-item > summary::before, .volume-tree-item > summary::before { content: "▸"; color: var(--accent); transform: rotate(0deg); transition: transform 160ms ease; }
+.book-tree-item[open] > summary::before, .volume-tree-item[open] > summary::before { transform: rotate(90deg); }
+.volume-tree { padding: 0 18px 18px 34px; border-top: 1px solid var(--line); }
+.volume-tree-item { margin-top: 14px; box-shadow: 0 6px 20px rgb(37 37 37 / 3%); }
+.volume-tree-item > summary { padding: 17px 20px; font-weight: 700; }
+.tree-title { flex: 1; }
+.tree-count { color: var(--muted); font-family: ui-sans-serif, system-ui, sans-serif; font-size: 13px; font-weight: 400; white-space: nowrap; }
+.tree-chapter-list { margin: 0; padding: 0 20px 16px 48px; border-top: 1px solid var(--line); }
+.tree-chapter-list li { padding: 12px 0; border-bottom: 1px dashed var(--line); }
+.tree-chapter-list li:last-child { border-bottom: 0; }
+.tree-chapter-list a { text-decoration: none; font-weight: 600; }
+@media (max-width: 620px) {
+  .volume-tree { padding-left: 14px; padding-right: 10px; }
+  .book-tree-item > summary { padding: 18px; }
+  .tree-chapter-list { padding-left: 34px; }
+}

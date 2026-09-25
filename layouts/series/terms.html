@@ -1,15 +1,21 @@
 {{ define "main" }}
 <header class="page-heading">
   <p class="eyebrow">SERIALS</p>
-  <h1>连载目录</h1>
+  <h1>连载书架</h1>
+  <p class="hero-copy">点击书名或卷名，可以展开查看章节。</p>
 </header>
 
-<div class="series-index">
+<div class="book-tree">
   {{ range .Pages }}
-    <a class="series-card" href="{{ .RelPermalink }}">
-      <strong>{{ .Title }}</strong>
-      <span>{{ len .Pages }} 章</span>
-    </a>
+    <details class="book-tree-item" open>
+      <summary>
+        <span class="tree-title">{{ .Title }}</span>
+        <span class="tree-count">{{ len .Pages }} 章</span>
+      </summary>
+      <div class="volume-tree">
+        {{ partial "volume-tree.html" .Pages }}
+      </div>
+    </details>
   {{ else }}
     <p class="empty">暂时没有连载。</p>
   {{ end }}
