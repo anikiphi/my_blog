@@ -11,6 +11,7 @@ const eventPath = process.env.GITHUB_EVENT_PATH;
 const repository = process.env.GITHUB_REPOSITORY || "";
 const token = process.env.GITHUB_TOKEN || "";
 const branch = process.env.DEFAULT_BRANCH || "main";
+const chapterHeadingPattern = /^(?:第\s*[0-9零〇一二三四五六七八九十百千万两]+\s*[章节回话卷篇部集幕]|序章|序言|楔子|引子|前言|后记|终章|尾声|番外(?:\s*[0-9零〇一二三四五六七八九十百千万两]+)?|Chapter\s+(?:\d+|[IVXLCDM]+)|Prologue|Epilogue)(?:\s*[:：、.\-—]?\s*.*)?$/iu;
 
 function runGit(args, options = {}) {
   return execFileSync("git", args, {
@@ -70,11 +71,50 @@ function normalizeContent(value) {
     .join("\n\n");
 }
 
+function isChapterHeading(line) {
+  const text = String(line || "").trim();
+  return text.length > 0 && text.length <= 80 && chapterHeadingPattern.test(text);
+}
+
+function splitChapters(value) {
+  const text = String(value || "").replace(/\r\n?/g, "\n");
+  const lines = text.split("\n");
+  const headings = [];
+
+  lines.forEach((line, index) => {
+    if (isChapterHeading(line)) headings.push({ index, title: line.trim() });
+  });
+
+  if (headings.length < 2) return null;
+
+  const chapters = [];
+  const preface = lines.slice(0, headings[0].index).join("\n").trim();
+  if (preface) chapters.push({ title: "序言", content: preface });
+
+  headings.forEach((heading, index) => {
+    const nextIndex = index + 1 < headings.length ? headings[index + 1].index : lines.length;
+    const content = lines.slice(heading.index + 1, nextIndex).join("\n").trim();
+    if (content) chapters.push({ title: heading.title, content });
+  });
+
+  return chapters.length > 1 ? chapters : null;
+}
+
 function yamlString(value) {
   return JSON.stringify(String(value || ""));
 }
 
-function createPost({ dateTime, title, tags = [], summary = "", content, slug }) {
+function createPost({
+  dateTime,
+  title,
+  tags = [],
+  summary = "",
+  content,
+  slug,
+  series = "",
+  chapter = "",
+  weight,
+}) {
   const lines = [
     "---",
     `title: ${yamlString(title)}`,
@@ -83,6 +123,9 @@ function createPost({ dateTime, title, tags = [], summary = "", content, slug })
     `tags: [${tags.map(yamlString).join(", ")}]`,
   ];
 
+  if (series) lines.push(`series: ${yamlString(series)}`);
+  if (chapter) lines.push(`chapter: ${yamlString(chapter)}`);
+  if (Number.isFinite(weight)) lines.push(`weight: ${weight}`);
   if (summary) lines.push(`summary: ${yamlString(summary)}`);
   lines.push("---", "", content.trim(), "");
   return lines.join("\n");
@@ -96,6 +139,20 @@ function slugify(value) {
     .replace(/[^\p{Letter}\p{Number}]+/gu, "-")
     .replace(/^-+|-+$/g, "");
   return slug || `article-${Date.now()}`;
+}
+
+function uniquePostName(baseSlug, date) {
+  let slug = baseSlug;
+  let fileName = `${date}-${slug}.md`;
+  let counter = 2;
+
+  while (fs.existsSync(path.join(postsDir, fileName))) {
+    slug = `${baseSlug}-${counter}`;
+    fileName = `${date}-${slug}.md`;
+    counter += 1;
+  }
+
+  return { slug, fileName };
 }
 
 function decodeText(buffer) {
@@ -124,6 +181,45 @@ function decodeText(buffer) {
   }
 }
 
+async function writeSeriesPosts({ seriesTitle, chapters, dateBaseMs, slugPrefix }) {
+  await fsp.mkdir(postsDir, { recursive: true });
+  const converted = [];
+  const seriesSlug = slugPrefix || slugify(seriesTitle);
+
+  for (let index = 0; index < chapters.length; index += 1) {
+    const item = chapters[index];
+    const content = normalizeContent(item.content);
+    if (!content) continue;
+
+    const chapterNumber = index + 1;
+    const slug = `${seriesSlug}-${String(chapterNumber).padStart(3, "0")}`;
+    const fileName = `${slug}.md`;
+    const { dateTime } = chinaDateTime(new Date(dateBaseMs + index * 1000).toISOString());
+    const title = `${seriesTitle} · ${item.title}`;
+    const summary = `《${seriesTitle}》连载：${item.title}`;
+
+    await fsp.writeFile(
+      path.join(postsDir, fileName),
+      createPost({
+        dateTime,
+        title,
+        tags: ["连载", seriesTitle],
+        summary,
+        content,
+        slug,
+        series: seriesTitle,
+        chapter: item.title,
+        weight: chapterNumber,
+      }),
+      "utf8",
+    );
+
+    converted.push(`content/posts/${fileName}`);
+  }
+
+  return converted;
+}
+
 async function convertIssue(event) {
   const issue = event.issue;
   const body = issue.body || "";
@@ -135,13 +231,27 @@ async function convertIssue(event) {
 
   if (!content) throw new Error("Issue 正文为空，未生成文章。");
 
+  const chapters = splitChapters(content);
+  if (chapters) {
+    return writeSeriesPosts({
+      seriesTitle: title,
+      chapters,
+      dateBaseMs: new Date(issue.created_at).getTime(),
+      slugPrefix: `post-${issue.number}-chapters`,
+    });
+  }
+
   const { date, dateTime } = chinaDateTime(issue.created_at);
   const slug = `post-${issue.number}`;
   const fileName = `${date}-${slug}.md`;
   const filePath = path.join(postsDir, fileName);
 
   await fsp.mkdir(postsDir, { recursive: true });
-  await fsp.writeFile(filePath, createPost({ dateTime, title, tags, summary, content, slug }), "utf8");
+  await fsp.writeFile(
+    filePath,
+    createPost({ dateTime, title, tags, summary, content, slug }),
+    "utf8",
+  );
 
   return [`content/posts/${fileName}`];
 }
@@ -155,7 +265,6 @@ async function convertInbox() {
   }
 
   const converted = [];
-  const usedPaths = new Set();
 
   for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name, "zh-CN"))) {
     if (!entry.isFile() || !entry.name.toLowerCase().endsWith(".txt")) continue;
@@ -171,17 +280,23 @@ async function convertInbox() {
       continue;
     }
 
+    const chapters = splitChapters(content);
+    if (chapters) {
+      const created = await writeSeriesPosts({
+        seriesTitle: title,
+        chapters,
+        dateBaseMs: Date.now(),
+        slugPrefix: slugify(title),
+      });
+      converted.push(...created);
+      await fsp.unlink(sourcePath);
+      console.log(`已拆分连载：${entry.name} -> ${created.length} 章`);
+      continue;
+    }
+
     const { date, dateTime } = chinaDateTime(new Date().toISOString());
     const baseSlug = slugify(title);
-    let slug = baseSlug;
-    let fileName = `${date}-${slug}.md`;
-    let counter = 2;
-
-    while (usedPaths.has(fileName) || fs.existsSync(path.join(postsDir, fileName))) {
-      slug = `${baseSlug}-${counter}`;
-      fileName = `${date}-${slug}.md`;
-      counter += 1;
-    }
+    const { slug, fileName } = uniquePostName(baseSlug, date);
 
     await fsp.mkdir(postsDir, { recursive: true });
     await fsp.writeFile(
@@ -190,7 +305,7 @@ async function convertInbox() {
       "utf8",
     );
     await fsp.unlink(sourcePath);
-    usedPaths.add(fileName);
+
     converted.push(`content/posts/${fileName}`);
     console.log(`已转换 TXT：${entry.name} -> ${fileName}`);
   }

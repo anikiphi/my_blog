@@ -9,6 +9,10 @@ summaryLength = 80
 [pagination]
   pagerSize = 10
 
+[taxonomies]
+  tag = "tags"
+  series = "series"
+
 [params]
   author = "Anikiphi"
   description = "记录思考、写作与实践"
@@ -32,3 +36,7 @@ summaryLength = 80
     name = "全部文章"
     pageRef = "/posts/"
     weight = 20
+  [[menus.main]]
+    name = "连载"
+    pageRef = "/series/"
+    weight = 30

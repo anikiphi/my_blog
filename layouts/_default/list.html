@@ -4,7 +4,13 @@
   <h1>{{ if eq .Kind "section" }}全部文章{{ else }}{{ .Title }}{{ end }}</h1>
 </header>
 
-{{ $pages := .Pages.ByDate.Reverse }}
+{{ $pages := slice }}
+{{ $showSeries := and (eq .Kind "section") (eq .Section "posts") }}
+{{ range .Pages.ByDate.Reverse }}
+  {{ if or (not $showSeries) (not .Params.series) }}
+    {{ $pages = $pages | append . }}
+  {{ end }}
+{{ end }}
 {{ $paginator := .Paginate $pages }}
 <div class="post-list">
   {{ range $paginator.Pages }}

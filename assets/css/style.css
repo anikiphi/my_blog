@@ -78,3 +78,14 @@ a:hover { color: var(--accent); }
   .post { padding-top: 44px; }
   .post-card { padding: 22px; }
 }
+.series-label { margin: 0 0 12px; color: var(--accent); font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px; }
+.series-label a { text-decoration: none; }
+.series-heading { padding-bottom: 16px; }
+.chapter-list { margin: 24px 0 72px; padding-left: 28px; }
+.chapter-list li { padding: 16px 4px 16px 10px; border-bottom: 1px solid var(--line); }
+.chapter-list a { font-size: 19px; font-weight: 700; text-decoration: none; }
+.chapter-list time { display: block; margin-top: 5px; color: var(--muted); font-family: ui-sans-serif, system-ui, sans-serif; font-size: 13px; }
+.series-index { display: grid; gap: 14px; padding: 28px 0 72px; }
+.series-card { display: flex; justify-content: space-between; align-items: baseline; gap: 18px; padding: 22px 24px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; text-decoration: none; }
+.series-card strong { font-size: 22px; }
+.series-card span { color: var(--muted); font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px; white-space: nowrap; }

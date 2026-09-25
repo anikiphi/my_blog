@@ -1,0 +1,17 @@
+{{ define "main" }}
+<header class="page-heading">
+  <p class="eyebrow">SERIALS</p>
+  <h1>连载目录</h1>
+</header>
+
+<div class="series-index">
+  {{ range .Pages }}
+    <a class="series-card" href="{{ .RelPermalink }}">
+      <strong>{{ .Title }}</strong>
+      <span>{{ len .Pages }} 章</span>
+    </a>
+  {{ else }}
+    <p class="empty">暂时没有连载。</p>
+  {{ end }}
+</div>
+{{ end }}

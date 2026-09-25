@@ -1,6 +1,13 @@
 {{ define "main" }}
 <article class="post">
   <header class="post-header">
+    {{ with .GetTerms "series" }}
+      <p class="series-label">
+        连载：
+        {{ range . }}<a href="{{ .RelPermalink }}">{{ .LinkTitle }}</a>{{ end }}
+        {{ with $.Params.chapter }} · {{ . }}{{ end }}
+      </p>
+    {{ end }}
     <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date.Format "2006-01-02" }}</time>
     <h1>{{ .Title }}</h1>
     {{ with .GetTerms "tags" }}

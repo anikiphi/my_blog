@@ -1,0 +1,18 @@
+{{ define "main" }}
+<header class="page-heading series-heading">
+  <p class="eyebrow">SERIAL</p>
+  <h1>{{ .Title }}</h1>
+  <p class="hero-copy">共 {{ len .Pages }} 章</p>
+</header>
+
+<ol class="chapter-list">
+  {{ range .Pages.ByDate }}
+    <li>
+      <a href="{{ .RelPermalink }}">{{ with .Params.chapter }}{{ . }}{{ else }}{{ .Title }}{{ end }}</a>
+      <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date.Format "2006-01-02" }}</time>
+    </li>
+  {{ else }}
+    <li class="empty">暂时没有章节。</li>
+  {{ end }}
+</ol>
+{{ end }}
