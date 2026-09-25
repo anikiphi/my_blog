@@ -5,13 +5,7 @@
   <p class="hero-copy">{{ site.Params.description }}</p>
 </section>
 
-{{ $posts := slice }}
-{{ range (where site.RegularPages "Section" "posts").ByDate.Reverse }}
-  {{ if not .Params.series }}
-    {{ $posts = $posts | append . }}
-  {{ end }}
-{{ end }}
-
+{{ $posts := (where site.RegularPages "Section" "posts").ByDate.Reverse }}
 {{ if $posts }}
 <section class="post-list" aria-label="最新文章">
   {{ range first 20 $posts }}
