@@ -6,7 +6,7 @@
 {{ end }}
 
 {{ range sort $volumes "weight" "asc" }}
-  <details class="volume-tree-item" open>
+  <details class="volume-tree-item">
     <summary>
       <span class="tree-title">{{ .name }}</span>
       <span class="tree-count">{{ len .pages }} 章</span>
