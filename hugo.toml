@@ -1,0 +1,34 @@
+baseURL = "https://anikiphi.github.io/my_blog/"
+languageCode = "zh-cn"
+defaultContentLanguage = "zh-cn"
+title = "Anikiphi 的博客"
+timeZone = "Asia/Shanghai"
+enableRobotsTXT = true
+summaryLength = 80
+
+[pagination]
+  pagerSize = 10
+
+[params]
+  author = "Anikiphi"
+  description = "记录思考、写作与实践"
+  dateFormat = "2006-01-02"
+
+[markup]
+  [markup.highlight]
+    noClasses = false
+  [markup.goldmark.renderer]
+    unsafe = true
+
+[outputs]
+  home = ["HTML", "RSS"]
+
+[menus]
+  [[menus.main]]
+    name = "首页"
+    pageRef = "/"
+    weight = 10
+  [[menus.main]]
+    name = "全部文章"
+    pageRef = "/posts/"
+    weight = 20

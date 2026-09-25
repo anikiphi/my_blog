@@ -1,0 +1,22 @@
+{{ define "main" }}
+<section class="hero">
+  <p class="eyebrow">WRITING &amp; NOTES</p>
+  <h1>{{ site.Title }}</h1>
+  <p class="hero-copy">{{ site.Params.description }}</p>
+</section>
+
+{{ $posts := where site.RegularPages "Section" "posts" }}
+{{ if $posts }}
+<section class="post-list" aria-label="最新文章">
+  {{ range first 20 $posts.ByDate.Reverse }}
+    <article class="post-card">
+      <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date.Format "2006-01-02" }}</time>
+      <h2><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2>
+      {{ with .Summary }}<p>{{ . | plainify }}</p>{{ end }}
+    </article>
+  {{ end }}
+</section>
+{{ else }}
+  <p class="empty">还没有文章。</p>
+{{ end }}
+{{ end }}

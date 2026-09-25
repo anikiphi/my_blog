@@ -1,0 +1,41 @@
+name: 发布文章
+description: 粘贴文字并自动发布到博客
+title: "[发布] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 粘贴文章
+        填好标题，把正文粘贴到最后一个输入框，然后点击最下方的 **Submit new issue**。
+        图片可以直接拖进正文框。发布通常需要 1 到 2 分钟。
+
+  - type: input
+    id: title
+    attributes:
+      label: 文章标题
+      placeholder: 例如：我的第一篇文章
+    validations:
+      required: true
+
+  - type: input
+    id: tags
+    attributes:
+      label: 标签
+      description: 可选，用逗号分隔。
+      placeholder: 随笔, 读书, 技术
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: 文章摘要
+      description: 可选。不填时网站会自动截取正文开头。
+      placeholder: 用一两句话介绍这篇文章。
+
+  - type: textarea
+    id: content
+    attributes:
+      label: 正文
+      description: 直接粘贴文字。可以使用上方工具栏排版，也可以拖入图片。
+      render: markdown
+    validations:
+      required: true

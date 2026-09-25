@@ -1,0 +1,73 @@
+name: 发布博客
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "inbox/**"
+      - "content/**"
+      - "static/**"
+      - "assets/**"
+      - "layouts/**"
+      - "hugo.toml"
+      - ".github/workflows/publish.yml"
+  issues:
+    types: [opened, edited, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: >-
+      github.event_name != 'issues' ||
+      (startsWith(github.event.issue.title, '[发布]') &&
+       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association))
+    runs-on: ubuntu-latest
+    steps:
+      - name: 获取仓库
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 把 Issue 或 TXT 转换成文章
+        run: node .github/scripts/publish.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+
+      - name: 准备 GitHub Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - name: 安装 Hugo
+        uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: "latest"
+
+      - name: 构建网站
+        run: hugo --minify --baseURL "${{ steps.pages.outputs.base_url }}/"
+
+      - name: 上传网站文件
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./public
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: 发布到 GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

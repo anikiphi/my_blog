@@ -1,0 +1,30 @@
+{{ define "main" }}
+<header class="page-heading">
+  <p class="eyebrow">ARTICLES</p>
+  <h1>{{ if eq .Kind "section" }}全部文章{{ else }}{{ .Title }}{{ end }}</h1>
+</header>
+
+{{ $pages := .Pages.ByDate.Reverse }}
+{{ $paginator := .Paginate $pages }}
+<div class="post-list">
+  {{ range $paginator.Pages }}
+    <article class="post-card">
+      <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date.Format "2006-01-02" }}</time>
+      <h2><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2>
+      {{ with .Summary }}<p>{{ . | plainify }}</p>{{ end }}
+    </article>
+  {{ else }}
+    <p class="empty">暂时没有文章。</p>
+  {{ end }}
+</div>
+
+{{ with $paginator }}
+  {{ if gt .TotalPages 1 }}
+  <nav class="pagination" aria-label="分页">
+    {{ with .Prev }}<a href="{{ .URL }}">← 上一页</a>{{ end }}
+    <span>第 {{ .PageNumber }} / {{ .TotalPages }} 页</span>
+    {{ with .Next }}<a href="{{ .URL }}">下一页 →</a>{{ end }}
+  </nav>
+  {{ end }}
+{{ end }}
+{{ end }}
