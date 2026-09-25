@@ -47,6 +47,8 @@ jobs:
       - name: 准备 GitHub Pages
         id: pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: 安装 Hugo
         uses: peaceiris/actions-hugo@v3
