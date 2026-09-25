@@ -1,7 +1,7 @@
 {{ $volumes := slice }}
 {{ range .GroupByParam "volume" }}
   {{ $volumeWeight := 1 }}
-  {{ with index . 0 }}{{ $volumeWeight = .Params.volume_weight }}{{ end }}
+  {{ with index .Pages 0 }}{{ $volumeWeight = .Params.volume_weight }}{{ end }}
   {{ $volumes = $volumes | append (dict "name" .Key "weight" $volumeWeight "pages" .Pages.ByWeight) }}
 {{ end }}
 
